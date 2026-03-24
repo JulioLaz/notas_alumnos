@@ -332,7 +332,10 @@ tr:hover td.td-al{background:#0c1929;}
 // ═══════════════════════════════════════════════════════════════
 
 // ── CONFIG ─────────────────────────────────────────────────────
-const GAS_URL   = 'https://script.google.com/macros/s/AKfycbxHuPBB9MW0pMXNh-i8m48T3DFULKKAMxdu6lzkYRPO20JSPp4OCInpMrKDWrzDhHnN/exec';
+// const GAS_URL   = 'https://script.google.com/macros/s/AKfycbxHuPBB9MW0pMXNh-i8m48T3DFULKKAMxdu6lzkYRPO20JSPp4OCInpMrKDWrzDhHnN/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwYgpou84B4VRTPHhPJfpC-wCP9mczB8iuIXXVJJgWR5PWRCD9xrYHuXBaHjwA6b0Ba/exec';
+
+
 const CREDS     = { user: 'profe', pass: 'filosofia2026' };  // ← CAMBIAR
 const UMBRAL    = 60;   // % mínimo por nivel y promedio
 const NIVELES   = ['NOVATO', 'GUERRA', 'SABIO'];
@@ -653,6 +656,39 @@ function renderVistaAlumno(lista, cont){
   });
 
   cont.innerHTML = h;
+}
+
+// ── doGet: lectura de datos para Libro de Calificaciones ──
+function doGet(e) {
+  try {
+    const action = e && e.parameter && e.parameter.action;
+    if (action === 'getData') return getSheetData();
+    return jsonOut({ ok: false, error: 'Acción no reconocida' });
+  } catch (err) {
+    return jsonOut({ ok: false, error: err.toString() });
+  }
+}
+
+function getSheetData() {
+  const ss    = SpreadsheetApp.openById('1uyKfc_L_nJqo3HiB9FW2FaBMMJavHMFlxDuU0qdS2Lk');
+  const sheet = ss.getSheetByName('Resultados Quiz') || ss.getSheets()[0];
+  const data  = sheet.getDataRange().getValues();
+  if (data.length < 2) return jsonOut({ ok: true, data: [] });
+  const headers = data[0].map(h => String(h).trim());
+  const rows = data.slice(1)
+    .filter(r => r.some(c => c !== ''))
+    .map(row => {
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = row[i]);
+      return obj;
+    });
+  return jsonOut({ ok: true, data: rows });
+}
+
+function jsonOut(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 </script>
 </body>
