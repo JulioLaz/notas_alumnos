@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CHRONOS — Libro de Calificaciones</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#050a0e; --bg2:#0a1520; --bg3:#0f1e2e;
+  --gold:#ffb300; --gold2:#ff8c00;
+  --cyan:#00e5ff; --green:#00ff88; --red:#ff3b5c;
+  --purple:#b44fff; --white:#e8f4fd; --dim:#a6aeb4;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:'Share Tech Mono',monospace;}
+
+body::after{
+  content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(0,229,255,.02) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(0,229,255,.02) 1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none;z-index:0;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.05) 2px,rgba(0,0,0,.05) 4px);
+  pointer-events:none;z-index:9999;
+}
+
+/* ── SCREENS ── */
+.screen{display:none;min-height:100vh;position:relative;z-index:10;padding:1.5rem;}
+.screen.active{display:block;}
+.screen-center{display:none;min-height:100vh;flex-direction:column;align-items:center;
+  justify-content:center;padding:1.5rem;position:relative;z-index:10;}
+.screen-center.active{display:flex;}
+
+/* ── TIPOGRAFÍA ── */
+.hdr{
+  font-family:'Press Start 2P',monospace;
+  font-size:clamp(.55rem,2.5vw,.8rem);
+  color:var(--gold);text-align:center;line-height:1.8;
+  text-shadow:0 0 30px var(--gold2),0 0 60px rgba(255,179,0,.2);
+  margin-bottom:.4rem;
+}
+.sub{
+  font-family:'Orbitron',sans-serif;font-size:.6rem;
+  color:var(--cyan);letter-spacing:.25em;text-align:center;
+  margin-bottom:2.5rem;opacity:.7;
+}
+
+/* ── BOTONES ── */
+.btn{
+  font-family:'Orbitron',sans-serif;font-size:.6rem;font-weight:700;
+  letter-spacing:.15em;text-transform:uppercase;border:none;cursor:pointer;
+  padding:.8rem 1.8rem;transition:all .15s;
+}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#000;}
+.btn-gold:hover{transform:translateY(-2px);box-shadow:0 0 20px var(--gold);}
+.btn-cyan{background:transparent;color:var(--cyan);border:1px solid var(--cyan);}
+.btn-cyan:hover{background:rgba(0,229,255,.08);}
+.btn-red{background:linear-gradient(135deg,var(--red),#c0002a);color:#fff;}
+.btn-red:hover{box-shadow:0 0 15px var(--red);}
+.btn-sm{padding:.4rem .8rem;font-size:.5rem;}
+
+/* ── CARDS INICIO ── */
+.inicio-cards{display:flex;flex-direction:column;gap:1rem;width:100%;max-width:380px;}
+.i-card{
+  background:var(--bg2);border:1px solid #1a2a3a;
+  padding:1.5rem;cursor:pointer;transition:all .2s;text-align:center;
+  position:relative;overflow:hidden;
+}
+.i-card::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  transition:width .2s;
+}
+.i-card.docente::before{background:var(--gold);}
+.i-card.alumno::before{background:var(--cyan);}
+.i-card:hover{transform:translateX(4px);}
+.i-card.docente:hover{border-color:var(--gold);box-shadow:0 0 15px rgba(255,179,0,.12);}
+.i-card.alumno:hover{border-color:var(--cyan);box-shadow:0 0 15px rgba(0,229,255,.12);}
+.i-icon{font-size:1.6rem;margin-bottom:.6rem;}
+.i-title{
+  font-family:'Orbitron',sans-serif;font-size:.65rem;font-weight:700;
+  letter-spacing:.2em;margin-bottom:.3rem;
+}
+.i-card.docente .i-title{color:var(--gold);}
+.i-card.alumno .i-title{color:var(--cyan);}
+.i-desc{font-size:.6rem;color:var(--dim);}
+
+/* ── FORMULARIOS ── */
+.form-box{display:flex;flex-direction:column;gap:.9rem;width:100%;max-width:340px;}
+.f-label{font-size:.5rem;color:var(--cyan);letter-spacing:.2em;margin-bottom:.25rem;}
+.f-input{
+  background:var(--bg2);border:1px solid #1a2a3a;
+  color:var(--white);font-family:'Share Tech Mono',monospace;
+  font-size:.85rem;padding:.65rem .9rem;width:100%;
+  outline:none;transition:border-color .2s;
+}
+.f-input:focus{border-color:var(--gold);}
+.f-error{font-size:.55rem;color:var(--red);text-align:center;min-height:1rem;letter-spacing:.1em;}
+.f-hint{font-size:.5rem;color:var(--dim);text-align:center;}
+
+/* ── TABLA SCREEN ── */
+#screen-tabla{padding:1rem;}
+.t-topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem;
+}
+.t-title{
+  font-family:'Press Start 2P',monospace;font-size:.5rem;
+  color:var(--gold);line-height:1.8;
+}
+.t-user{font-size:.55rem;color:var(--cyan);letter-spacing:.12em;margin-top:.2rem;}
+.t-actions{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;}
+
+/* FILTROS */
+.filter-bar{display:flex;gap:.5rem;margin-bottom:.8rem;flex-wrap:wrap;align-items:center;}
+.f-select{
+  background:var(--bg2);border:1px solid #1a2a3a;
+  color:var(--white);font-family:'Share Tech Mono',monospace;
+  font-size:.65rem;padding:.35rem .5rem;outline:none;cursor:pointer;
+}
+.f-select:focus{border-color:var(--cyan);}
+
+/* MINI STATS */
+.mini-stats{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.8rem;}
+.ms{
+  background:var(--bg2);border:1px solid #1a2a3a;
+  padding:.5rem .8rem;text-align:center;flex:1;min-width:80px;
+}
+.ms-val{
+  font-family:'Orbitron',sans-serif;font-size:.9rem;
+  font-weight:700;color:var(--cyan);
+}
+.ms-lbl{font-size:.45rem;color:var(--dim);letter-spacing:.1em;margin-top:.15rem;}
+
+/* TABLA DOCENTE */
+.tabla-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+table{border-collapse:collapse;width:100%;min-width:500px;font-size:.6rem;}
+th{
+  background:var(--bg3);color:var(--cyan);
+  font-family:'Orbitron',sans-serif;font-size:.45rem;
+  letter-spacing:.08em;padding:.45rem .5rem;
+  text-align:center;border:1px solid #1a2a3a;white-space:nowrap;
+}
+th.th-al{text-align:left;position:sticky;left:0;background:var(--bg3);z-index:2;}
+th.th-grupo{
+  background:#08121c;color:var(--gold2);font-size:.45rem;
+  border-bottom:1px solid var(--gold2);
+}
+td{
+  padding:.38rem .5rem;border:1px solid #1a2a3a;
+  text-align:center;vertical-align:middle;
+}
+td.td-al{
+  text-align:left;position:sticky;left:0;
+  background:var(--bg2);z-index:1;white-space:nowrap;
+}
+tr:nth-child(even) td{background:rgba(10,21,32,.6);}
+tr:nth-child(even) td.td-al{background:#070f18;}
+tr:hover td{background:var(--bg3);}
+tr:hover td.td-al{background:#0c1929;}
+
+.cel-ok{color:var(--green);font-family:'Orbitron',sans-serif;font-weight:700;}
+.cel-err{color:var(--red);font-family:'Orbitron',sans-serif;font-weight:700;}
+.cel-dim{color:var(--dim);}
+.cel-nota{font-family:'Orbitron',sans-serif;font-weight:900;font-size:.75rem;}
+.nota-apr{color:var(--green);}
+.nota-des{color:var(--red);}
+.nota-inc{color:var(--dim);font-size:.5rem;font-family:'Share Tech Mono',monospace;}
+
+/* VISTA ALUMNO */
+.al-header{
+  background:var(--bg2);border:1px solid #1a2a3a;
+  padding:.8rem 1rem;margin-bottom:.8rem;max-width:900px;margin-left:auto;margin-right:auto;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem;
+}
+.al-name{
+  font-family:'Orbitron',sans-serif;font-size:.7rem;
+  font-weight:700;color:var(--gold);
+}
+.al-curso{font-size:.6rem;color:var(--dim);margin-top:.2rem;}
+.al-badge{
+  font-family:'Orbitron',sans-serif;font-size:.55rem;font-weight:700;
+  padding:.3rem .7rem;letter-spacing:.1em;
+}
+.temas-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+  gap:.7rem;max-width:900px;margin:0 auto;
+}
+.tema-card{
+  background:var(--bg2);border:1px solid #1a2a3a;
+  padding:.9rem;transition:border-color .2s;
+}
+.tc-title{
+  font-family:'Orbitron',sans-serif;font-size:.5rem;font-weight:700;
+  color:var(--gold);letter-spacing:.15em;
+  padding-bottom:.5rem;margin-bottom:.6rem;
+  border-bottom:1px solid #1a2a3a;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.3rem;
+}
+.nivel-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.28rem 0;border-bottom:1px solid #0d1e2e;
+}
+.nivel-row:last-of-type{border-bottom:none;}
+.nv-label{font-size:.55rem;color:var(--dim);letter-spacing:.08em;}
+.nv-pct{font-family:'Orbitron',sans-serif;font-size:.68rem;font-weight:700;}
+.nota-row{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-top:.6rem;padding-top:.5rem;border-top:1px solid #1a2a3a;
+}
+.nota-lbl{font-family:'Orbitron',sans-serif;font-size:.48rem;color:var(--gold);letter-spacing:.1em;}
+.nota-big{font-family:'Orbitron',sans-serif;font-size:1.2rem;font-weight:900;}
+
+/* BADGE */
+.badge{
+  display:inline-block;font-family:'Orbitron',sans-serif;
+  font-size:.4rem;padding:.15rem .4rem;letter-spacing:.08em;font-weight:700;
+}
+.bdg-g{background:rgba(0,255,136,.08);color:var(--green);border:1px solid var(--green);}
+.bdg-r{background:rgba(255,59,92,.08);color:var(--red);border:1px solid var(--red);}
+.bdg-d{background:rgba(166,174,180,.08);color:var(--dim);border:1px solid var(--dim);}
+
+/* LOADING */
+.loading{text-align:center;color:var(--dim);font-size:.65rem;padding:3rem;letter-spacing:.2em;line-height:2;}
+
+/* SCROLL */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--dim);}
+
+@media(max-width:480px){
+  .temas-grid{grid-template-columns:1fr;}
+  .mini-stats{gap:.3rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ INICIO ══════════════════════════════════════════════ -->
+<div id="screen-inicio" class="screen-center active">
+  <div style="font-family:'Press Start 2P',monospace;font-size:.38rem;color:var(--cyan);letter-spacing:.3em;
+    border:1px solid var(--cyan);padding:.3rem .7rem;margin-bottom:1.5rem;opacity:.7;">
+    ⚡ FILOSOFÍA · ESCUELA AMADO JURI
+  </div>
+  <div class="hdr">CHRONOS<br>CALIFICACIONES</div>
+  <div class="sub">LIBRO DE NOTAS DIGITAL</div>
+
+  <div class="inicio-cards">
+    <div class="i-card docente" onclick="irA('screen-login')">
+      <div class="i-icon">🔐</div>
+      <div class="i-title">SOY DOCENTE</div>
+      <div class="i-desc">Acceso completo · Todos los alumnos y cursos</div>
+    </div>
+    <div class="i-card alumno" onclick="irA('screen-buscar')">
+      <div class="i-icon">🎓</div>
+      <div class="i-title">SOY ALUMNO</div>
+      <div class="i-desc">Consultá tus calificaciones por apellido</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LOGIN DOCENTE ══════════════════════════════════════ -->
+<div id="screen-login" class="screen-center">
+  <div class="hdr">ACCESO<br>DOCENTE</div>
+  <div class="sub">CREDENCIALES REQUERIDAS</div>
+
+  <div class="form-box">
+    <div>
+      <div class="f-label">// USUARIO</div>
+      <input class="f-input" id="l-user" type="text" placeholder="usuario" autocomplete="username"
+        onkeydown="if(event.key==='Enter') document.getElementById('l-pass').focus()">
+    </div>
+    <div>
+      <div class="f-label">// CONTRASEÑA</div>
+      <input class="f-input" id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <div class="f-error" id="l-error"></div>
+    <button class="btn btn-gold" onclick="doLogin()">INGRESAR →</button>
+    <button class="btn btn-cyan" onclick="irA('screen-inicio')" style="margin-top:.2rem">← VOLVER</button>
+  </div>
+</div>
+
+<!-- ══ BUSCAR ALUMNO ══════════════════════════════════════ -->
+<div id="screen-buscar" class="screen-center">
+  <div class="hdr">MIS<br>CALIFICACIONES</div>
+  <div class="sub">BUSCÁ POR TU APELLIDO</div>
+
+  <div style="display:flex;gap:.5rem;width:100%;max-width:380px;">
+    <input class="f-input" id="b-input" type="text" placeholder="Tu apellido..." maxlength="40"
+      onkeydown="if(event.key==='Enter') doBuscar()" style="flex:1">
+    <button class="btn btn-gold" onclick="doBuscar()" style="padding:.65rem 1.2rem">►</button>
+  </div>
+  <div class="f-error" id="b-error" style="margin-top:.6rem"></div>
+  <button class="btn btn-cyan btn-sm" onclick="irA('screen-inicio')" style="margin-top:1.5rem">← VOLVER</button>
+</div>
+
+<!-- ══ TABLA PRINCIPAL ══════════════════════════════════ -->
+<div id="screen-tabla" class="screen">
+
+  <div class="t-topbar">
+    <div>
+      <div class="t-title" id="t-title">CALIFICACIONES</div>
+      <div class="t-user" id="t-user"></div>
+    </div>
+    <div class="t-actions">
+      <div id="wrap-curso" style="display:none">
+        <select class="f-select" id="fil-curso" onchange="renderTabla()">
+          <option value="">— Todos los cursos —</option>
+        </select>
+      </div>
+      <button class="btn btn-cyan btn-sm" onclick="cargarDatos()">↺ ACTUALIZAR</button>
+      <button class="btn btn-red btn-sm" onclick="cerrar()">✕ SALIR</button>
+    </div>
+  </div>
+
+  <div class="mini-stats" id="mini-stats"></div>
+  <div id="contenido"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CHRONOS — Libro de Calificaciones
+// v1.0 · 2026-03-23
+// Descripción: Visualización de notas por alumno desde Google Sheets
+// Modos: Docente (login) | Alumno (búsqueda por apellido)
+// Lógica: promedio 3 niveles (N1/N2/N3). Aprobado si cada nivel ≥ 60%
+//         y promedio ≥ 60%. Nota = promedio / 10.
+// ═══════════════════════════════════════════════════════════════
+
+// ── CONFIG ─────────────────────────────────────────────────────
+const GAS_URL   = 'https://script.google.com/macros/s/AKfycbxHuPBB9MW0pMXNh-i8m48T3DFULKKAMxdu6lzkYRPO20JSPp4OCInpMrKDWrzDhHnN/exec';
+const CREDS     = { user: 'profe', pass: 'filosofia2026' };  // ← CAMBIAR
+const UMBRAL    = 60;   // % mínimo por nivel y promedio
+const NIVELES   = ['NOVATO', 'GUERRA', 'SABIO'];
+const N_LABEL   = { NOVATO:'Nivel 1 — NOVATO', GUERRA:'Nivel 2 — GUERRA', SABIO:'Nivel 3 — SABIO' };
+
+// ── ESTADO ─────────────────────────────────────────────────────
+let modoDocente = false;
+let apellidoBusq = '';
+let datosRaw   = [];
+let temasUnicos = [];  // ["1_1","1_2",...] ordenados
+
+// ── NAVEGACIÓN ─────────────────────────────────────────────────
+function irA(id){
+  document.querySelectorAll('.screen,.screen-center').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── LOGIN ───────────────────────────────────────────────────────
+function doLogin(){
+  const u = document.getElementById('l-user').value.trim();
+  const p = document.getElementById('l-pass').value;
+  const e = document.getElementById('l-error');
+  if(u === CREDS.user && p === CREDS.pass){
+    e.textContent = '';
+    modoDocente = true;
+    apellidoBusq = '';
+    irA('screen-tabla');
+    cargarDatos();
+  } else {
+    e.textContent = '✗ CREDENCIALES INCORRECTAS';
+    document.getElementById('l-pass').value = '';
+  }
+}
+
+// ── BUSCAR ALUMNO ───────────────────────────────────────────────
+function doBuscar(){
+  const v = document.getElementById('b-input').value.trim().toUpperCase();
+  const e = document.getElementById('b-error');
+  if(!v){ e.textContent = '// INGRESÁ TU APELLIDO'; return; }
+  e.textContent = '';
+  modoDocente = false;
+  apellidoBusq = v;
+  irA('screen-tabla');
+  cargarDatos();
+}
+
+function cerrar(){
+  modoDocente = false; apellidoBusq = '';
+  datosRaw = []; temasUnicos = [];
+  document.getElementById('l-user').value = '';
+  document.getElementById('l-pass').value = '';
+  document.getElementById('b-input').value = '';
+  irA('screen-inicio');
+}
+
+// ── CARGA DE DATOS ──────────────────────────────────────────────
+function cargarDatos(){
+  const cont  = document.getElementById('contenido');
+  const stats = document.getElementById('mini-stats');
+  cont.innerHTML  = '<div class="loading">⟳ CARGANDO DATOS DEL SERVIDOR...</div>';
+  stats.innerHTML = '';
+
+  document.getElementById('t-title').textContent = modoDocente ? 'LIBRO DE CALIFICACIONES' : 'MIS CALIFICACIONES';
+  document.getElementById('t-user').textContent  = modoDocente ? '// MODO DOCENTE' : `// ALUMNO: ${apellidoBusq}`;
+  document.getElementById('wrap-curso').style.display = modoDocente ? 'block' : 'none';
+
+  fetch(GAS_URL + '?action=getData')
+    .then(r => r.json())
+    .then(json => {
+      if(!json.ok) throw new Error(json.error || 'Error en GAS');
+      datosRaw = json.data || [];
+      procesarYRenderizar();
+    })
+    .catch(err => {
+      cont.innerHTML = `<div class="loading" style="color:var(--red)">
+        ✗ ERROR AL CARGAR DATOS<br>
+        <span style="font-size:.5rem;color:var(--dim)">${err.message}</span><br><br>
+        <span style="font-size:.5rem;color:var(--dim)">
+          Verificá que el GAS tenga la función doGet activa<br>
+          y que el despliegue permita acceso a <b>Anyone</b>.
+        </span>
+      </div>`;
+    });
+}
+
+// ── PROCESAMIENTO ───────────────────────────────────────────────
+function procesarDatos(){
+  const alumnos = {};
+  const temasSet = new Set();
+
+  datosRaw.forEach(row => {
+    const nombre   = trim(row['Nombre']   || row['nombre']   || '');
+    const apellido = trim(row['Apellido'] || row['apellido'] || '');
+    const curso    = trim(row['Curso']    || row['curso']    || '');
+    const nivel    = trim(row['Nivel']    || row['nivel']    || '').toUpperCase();
+    const pct      = parseFloat(row['% Correctas'] || row['precision'] || row['Precision'] || 0);
+    const unidad   = parseInt(row['Unidad'] || row['unidad'] || 0);
+    const tema     = parseInt(row['Tema']   || row['tema']   || 0);
+
+    if(!apellido || !NIVELES.includes(nivel) || !unidad || !tema) return;
+
+    const key  = `${apellido}__${nombre}__${curso}`;
+    const tKey = `${unidad}_${tema}`;
+    temasSet.add(tKey);
+
+    if(!alumnos[key]) alumnos[key] = { nombre, apellido, curso, temas:{} };
+    if(!alumnos[key].temas[tKey]) alumnos[key].temas[tKey] = { unidad, tema, niveles:{} };
+
+    // Último intento gana (sheet está en orden cronológico)
+    alumnos[key].temas[tKey].niveles[nivel] = { pct };
+  });
+
+  temasUnicos = [...temasSet].sort((a,b) => {
+    const [ua,ta] = a.split('_').map(Number);
+    const [ub,tb] = b.split('_').map(Number);
+    return ua!==ub ? ua-ub : ta-tb;
+  });
+
+  return alumnos;
+}
+
+function trim(s){ return String(s).trim(); }
+
+// ── NOTA POR TEMA ───────────────────────────────────────────────
+function calcNota(temaDat){
+  const vals = NIVELES.map(n => temaDat.niveles[n]);
+  if(vals.some(v => !v)) return { completo:false };
+  const pcts   = vals.map(v => v.pct);
+  const prom   = pcts.reduce((a,b)=>a+b,0) / 3;
+  const aprobado = pcts.every(p => p >= UMBRAL) && prom >= UMBRAL;
+  return { completo:true, nota:+(prom/10).toFixed(1), prom:+prom.toFixed(1), aprobado, pcts };
+}
+
+// ── RENDER MAESTRO ──────────────────────────────────────────────
+function procesarYRenderizar(){
+  const alumnos = procesarDatos();
+  if(modoDocente){
+    const cursos = [...new Set(Object.values(alumnos).map(a=>a.curso))].sort();
+    const sel = document.getElementById('fil-curso');
+    sel.innerHTML = '<option value="">— Todos los cursos —</option>';
+    cursos.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
+  }
+  renderTabla(alumnos);
+}
+
+function renderTabla(alumnosParam){
+  const alumnos = alumnosParam || procesarDatos();
+  const cont    = document.getElementById('contenido');
+  const stats   = document.getElementById('mini-stats');
+
+  let lista = Object.values(alumnos);
+
+  if(!modoDocente){
+    lista = lista.filter(a => a.apellido.toUpperCase().includes(apellidoBusq));
+  } else {
+    const cf = document.getElementById('fil-curso')?.value;
+    if(cf) lista = lista.filter(a => a.curso === cf);
+  }
+
+  lista.sort((a,b) => a.apellido.localeCompare(b.apellido) || a.nombre.localeCompare(b.nombre));
+
+  if(lista.length === 0){
+    cont.innerHTML  = '<div class="loading">// NO SE ENCONTRARON REGISTROS</div>';
+    stats.innerHTML = '';
+    return;
+  }
+
+  renderMiniStats(lista, stats);
+  modoDocente ? renderTablaDocente(lista, cont) : renderVistaAlumno(lista, cont);
+}
+
+// ── MINI STATS ──────────────────────────────────────────────────
+function renderMiniStats(lista, cont){
+  let totApr=0, totComp=0, totTemas=0;
+  lista.forEach(al => {
+    temasUnicos.forEach(tk => {
+      const t = al.temas[tk]; if(!t) return;
+      totTemas++;
+      const r = calcNota(t);
+      if(r.completo){ totComp++; if(r.aprobado) totApr++; }
+    });
+  });
+  const pctA = totComp>0 ? Math.round(totApr/totComp*100) : 0;
+  cont.innerHTML = `
+    <div class="ms"><div class="ms-val">${lista.length}</div><div class="ms-lbl">ALUMNOS</div></div>
+    <div class="ms"><div class="ms-val">${temasUnicos.length}</div><div class="ms-lbl">TEMAS</div></div>
+    <div class="ms"><div class="ms-val" style="color:var(--green)">${totApr}</div><div class="ms-lbl">APR. COMPLETOS</div></div>
+    <div class="ms"><div class="ms-val" style="color:var(--gold)">${pctA}%</div><div class="ms-lbl">% APROBACIÓN</div></div>
+  `;
+}
+
+// ── TABLA DOCENTE ───────────────────────────────────────────────
+function renderTablaDocente(lista, cont){
+  let h = '<div class="tabla-wrap"><table><thead>';
+
+  // Fila 1: grupos de tema
+  h += '<tr><th class="th-al" rowspan="2">ALUMNO</th><th rowspan="2">CURSO</th>';
+  temasUnicos.forEach(tk => {
+    const [u,t] = tk.split('_');
+    h += `<th class="th-grupo" colspan="4">UNIDAD ${u} · TEMA ${t}</th>`;
+  });
+  h += '</tr>';
+
+  // Fila 2: N1 N2 N3 NOTA
+  h += '<tr>';
+  temasUnicos.forEach(() => {
+    h += '<th>N1</th><th>N2</th><th>N3</th>';
+    h += '<th style="color:var(--gold);font-size:.5rem">NOTA</th>';
+  });
+  h += '</tr></thead><tbody>';
+
+  lista.forEach(al => {
+    h += `<tr><td class="td-al">
+      <b style="color:var(--white)">${al.apellido}</b>
+      <span style="color:var(--dim)">, ${al.nombre}</span>
+    </td>`;
+    h += `<td style="color:var(--dim);font-size:.5rem">${al.curso}</td>`;
+
+    temasUnicos.forEach(tk => {
+      const t = al.temas[tk];
+      if(!t){
+        h += '<td class="cel-dim">—</td><td class="cel-dim">—</td><td class="cel-dim">—</td>';
+        h += '<td class="nota-inc">S/D</td>';
+        return;
+      }
+      NIVELES.forEach(nv => {
+        const d = t.niveles[nv];
+        if(!d){ h += '<td class="cel-dim">—</td>'; return; }
+        const cls = d.pct >= UMBRAL ? 'cel-ok' : 'cel-err';
+        h += `<td class="${cls}">${d.pct}%</td>`;
+      });
+      const r = calcNota(t);
+      if(!r.completo){
+        h += '<td class="nota-inc">INC</td>';
+      } else {
+        const cls = r.aprobado ? 'nota-apr' : 'nota-des';
+        h += `<td class="cel-nota ${cls}">${r.nota}</td>`;
+      }
+    });
+    h += '</tr>';
+  });
+
+  h += '</tbody></table></div>';
+  cont.innerHTML = h;
+}
+
+// ── VISTA ALUMNO ────────────────────────────────────────────────
+function renderVistaAlumno(lista, cont){
+  let h = '';
+
+  lista.forEach(al => {
+    let apr=0, comp=0;
+    temasUnicos.forEach(tk => {
+      const t = al.temas[tk]; if(!t) return;
+      const r = calcNota(t);
+      if(r.completo){ comp++; if(r.aprobado) apr++; }
+    });
+
+    const ratio = comp>0 ? `${apr}/${comp} temas aprobados` : 'Sin temas completos';
+    const rCls  = apr===comp && comp>0 ? 'bdg-g' : apr>0 ? 'bdg-d' : 'bdg-r';
+
+    h += `<div class="al-header">
+      <div>
+        <div class="al-name">${al.apellido}, ${al.nombre}</div>
+        <div class="al-curso">CURSO: ${al.curso}</div>
+      </div>
+      <span class="al-badge ${rCls}">${ratio}</span>
+    </div>
+    <div class="temas-grid" style="margin-bottom:1.2rem">`;
+
+    temasUnicos.forEach(tk => {
+      const [u,t] = tk.split('_');
+      const temaDat = al.temas[tk];
+      const r = temaDat ? calcNota(temaDat) : null;
+
+      let badgeH = '';
+      if(r && r.completo){
+        badgeH = r.aprobado
+          ? '<span class="badge bdg-g">APROBADO</span>'
+          : '<span class="badge bdg-r">DESAPROBADO</span>';
+      } else if(!temaDat){
+        badgeH = '<span class="badge bdg-d">SIN DATOS</span>';
+      } else {
+        badgeH = '<span class="badge bdg-d">INCOMPLETO</span>';
+      }
+
+      h += `<div class="tema-card">
+        <div class="tc-title">
+          <span>UNIDAD ${u} · TEMA ${t}</span>
+          ${badgeH}
+        </div>`;
+
+      NIVELES.forEach((nv,idx) => {
+        const d = temaDat?.niveles?.[nv];
+        let pctH = '<span style="color:var(--dim)">—</span>';
+        if(d){
+          const cls = d.pct >= UMBRAL ? 'cel-ok' : 'cel-err';
+          pctH = `<span class="nv-pct ${cls}">${d.pct}%</span>`;
+        }
+        h += `<div class="nivel-row">
+          <span class="nv-label">// NIVEL ${idx+1} · ${['NOVATO','GUERRA','SABIO'][idx]}</span>
+          ${pctH}
+        </div>`;
+      });
+
+      h += `<div class="nota-row">
+        <span class="nota-lbl">NOTA FINAL</span>`;
+      if(!r || !r.completo){
+        h += `<span class="nota-big cel-dim" style="font-size:.7rem">—</span>`;
+      } else {
+        const cls = r.aprobado ? 'nota-apr' : 'nota-des';
+        h += `<span class="nota-big ${cls}">${r.nota}</span>`;
+      }
+      h += `</div></div>`;
+    });
+
+    h += '</div>';
+  });
+
+  cont.innerHTML = h;
+}
+</script>
+</body>
+</html>
