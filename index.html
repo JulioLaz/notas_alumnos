@@ -338,8 +338,8 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbwYgpou84B4VRTPHhPJfpC-
 
 const CREDS     = { user: 'profe', pass: 'filosofia2026' };  // ← CAMBIAR
 const UMBRAL    = 60;   // % mínimo por nivel y promedio
-const NIVELES   = ['NOVATO', 'GUERRA', 'SABIO'];
-const N_LABEL   = { NOVATO:'Nivel 1 — NOVATO', GUERRA:'Nivel 2 — GUERRA', SABIO:'Nivel 3 — SABIO' };
+const NIVELES   = ['1', '2', '3'];
+const N_LABEL   = { '1':'Nivel 1 — FÁCIL', '2':'Nivel 2 — MEDIO', '3':'Nivel 3 — DIFÍCIL' };
 
 // ── ESTADO ─────────────────────────────────────────────────────
 let modoDocente = false;
@@ -636,7 +636,7 @@ function renderVistaAlumno(lista, cont){
           pctH = `<span class="nv-pct ${cls}">${d.pct}%</span>`;
         }
         h += `<div class="nivel-row">
-          <span class="nv-label">// NIVEL ${idx+1} · ${['NOVATO','GUERRA','SABIO'][idx]}</span>
+          <span class="nv-label">// NIVEL ${idx+1} · ${['FÁCIL','MEDIO','DIFÍCIL'][idx]}</span>
           ${pctH}
         </div>`;
       });
