@@ -577,7 +577,7 @@ function renderTablaDocente(lista, cont){
   let h = '<div class="tabla-wrap"><table><thead>';
 
   // Fila 1: grupos de tema
-  h += '<tr><th class="th-al" rowspan="2">ALUMNO</th><th rowspan="2">CURSO</th>';
+  h += '<tr><th class="th-al" rowspan="2">ALUMNO</th>';
   temasUnicos.forEach(tk => {
     const [u,t] = tk.split('_');
     h += `<th class="th-grupo" colspan="4">UNIDAD ${u} · TEMA ${t}</th>`;
@@ -597,7 +597,6 @@ function renderTablaDocente(lista, cont){
       <b style="color:var(--white)">${al.apellido}</b>
       <span style="color:var(--dim)">, ${al.nombre}</span>
     </td>`;
-    h += `<td style="color:var(--dim);font-size:.5rem">${al.curso}</td>`;
 
     temasUnicos.forEach(tk => {
       const t = al.temas[tk];
