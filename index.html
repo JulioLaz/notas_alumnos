@@ -494,13 +494,24 @@ function similitudNombre(a, b){
 }
 
 // ── NOTA POR TEMA ───────────────────────────────────────────────
+// Nota = % obtenido en el nivel más alto completado, escalado a su máximo:
+//   N3 → máx 10  |  N2 → máx 9  |  N1 → máx 8
 function calcNota(temaDat){
-  const vals = NIVELES.map(n => temaDat.niveles[n]);
-  if(vals.some(v => !v)) return { completo:false };
-  const pcts   = vals.map(v => v.pct);
-  const prom   = pcts.reduce((a,b)=>a+b,0) / 3;
-  const aprobado = pcts.every(p => p >= UMBRAL) && prom >= UMBRAL;
-  return { completo:true, nota:+(prom/10).toFixed(1), prom:+prom.toFixed(1), aprobado, pcts };
+  const maxPorNivel = { '3': 10, '2': 9, '1': 8 };
+  for(const nv of ['3', '2', '1']){
+    const d = temaDat.niveles[nv];
+    if(d){
+      const nota = +(d.pct * maxPorNivel[nv] / 100).toFixed(1);
+      return {
+        completo : true,
+        nota,
+        aprobado : d.pct >= UMBRAL,
+        nivelMax : nv,
+        pcts     : NIVELES.map(n => temaDat.niveles[n]?.pct ?? null)
+      };
+    }
+  }
+  return { completo: false };
 }
 
 // ── RENDER MAESTRO ──────────────────────────────────────────────
