@@ -423,8 +423,20 @@ function cargarDatos(){
 
 // ── PROCESAMIENTO ───────────────────────────────────────────────
 function procesarDatos(){
-  const alumnos = {};
+  const alumnos  = {};
   const temasSet = new Set();
+  const keysNorm = {};          // nombre-normalizado → key
+  const UMBRAL_SIM = 0.80;
+
+  function buscarSimilar(apellido, nombre){
+    const full = normalizarNombre(`${apellido} ${nombre}`);
+    let mejorKey = null, mejorSim = 0;
+    for(const [norm, key] of Object.entries(keysNorm)){
+      const sim = similitudNombre(full, norm);
+      if(sim > mejorSim){ mejorSim = sim; mejorKey = key; }
+    }
+    return mejorSim >= UMBRAL_SIM ? mejorKey : null;
+  }
 
   datosRaw.forEach(row => {
     const nombre   = trim(row['Nombre']   || row['nombre']   || '');
@@ -437,11 +449,17 @@ function procesarDatos(){
 
     if(!apellido || !NIVELES.includes(nivel) || !unidad || !tema) return;
 
-    const key  = `${apellido}__${nombre}__${curso}`;
     const tKey = `${unidad}_${tema}`;
     temasSet.add(tKey);
 
-    if(!alumnos[key]) alumnos[key] = { nombre, apellido, curso, temas:{} };
+    // buscar alumno ya existente con nombre similar (fuzzy)
+    let key = buscarSimilar(apellido, nombre);
+    if(!key){
+      key = `${apellido}__${nombre}__${curso}`;
+      keysNorm[normalizarNombre(`${apellido} ${nombre}`)] = key;
+      alumnos[key] = { nombre, apellido, curso, temas:{} };
+    }
+
     if(!alumnos[key].temas[tKey]) alumnos[key].temas[tKey] = { unidad, tema, niveles:{} };
 
     // Último intento gana (sheet está en orden cronológico)
@@ -458,6 +476,22 @@ function procesarDatos(){
 }
 
 function trim(s){ return String(s).trim(); }
+
+// ── FUZZY MATCHING ──────────────────────────────────────────────
+function normalizarNombre(s){
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+}
+function similitudNombre(a, b){
+  const na = normalizarNombre(a), nb = normalizarNombre(b);
+  if(na === nb) return 1;
+  const la = na.length, lb = nb.length;
+  if(!la || !lb) return 0;
+  const dp = Array.from({length:la+1}, (_,i) =>
+    Array.from({length:lb+1}, (_,j) => i ? (j ? 0 : i) : j));
+  for(let i=1;i<=la;i++) for(let j=1;j<=lb;j++)
+    dp[i][j] = na[i-1]===nb[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return 1 - dp[la][lb]/Math.max(la,lb);
+}
 
 // ── NOTA POR TEMA ───────────────────────────────────────────────
 function calcNota(temaDat){
