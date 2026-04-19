@@ -149,10 +149,6 @@ th.th-grupo{
   background:#08121c;color:var(--gold2);font-size:.45rem;
   border-bottom:1px solid var(--gold2);
 }
-th.th-pct{
-  background:#08121c;color:var(--green);font-size:.45rem;
-  border-bottom:1px solid var(--green);
-}
 td{
   padding:.38rem .5rem;border:1px solid #1a2a3a;
   text-align:center;vertical-align:middle;
@@ -174,12 +170,6 @@ tr:hover td.td-al{background:#0c1929;}
 .nota-des{color:var(--red);}
 .nota-inc{color:var(--dim);font-size:.5rem;font-family:'Share Tech Mono',monospace;}
 
-/* columna % APR alumno */
-.td-pct-al{
-  font-family:'Orbitron',sans-serif;font-weight:700;font-size:.7rem;
-  border-left:2px solid #1a3a2a;
-}
-
 /* VISTA ALUMNO */
 .al-header{
   background:var(--bg2);border:1px solid #1a2a3a;
@@ -195,15 +185,6 @@ tr:hover td.td-al{background:#0c1929;}
   font-family:'Orbitron',sans-serif;font-size:.55rem;font-weight:700;
   padding:.3rem .7rem;letter-spacing:.1em;
 }
-.al-pct-box{
-  display:flex;flex-direction:column;align-items:center;
-  background:var(--bg3);border:1px solid #1a3a2a;
-  padding:.4rem .8rem;
-}
-.al-pct-val{
-  font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:900;
-}
-.al-pct-lbl{font-size:.4rem;color:var(--dim);letter-spacing:.1em;margin-top:.1rem;}
 .temas-grid{
   display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
   gap:.7rem;max-width:900px;margin:0 auto;
@@ -343,28 +324,20 @@ tr:hover td.td-al{background:#0c1929;}
 <script>
 // ═══════════════════════════════════════════════════════════════
 // CHRONOS — Libro de Calificaciones
-// v2.1 · 2026-04-19
-// Cambios v2.0:
-//   - Modo Docente: APR. COMPLETOS = alumnos con TODOS sus temas aprobados
-//   - Modo Docente: % APROBACIÓN = promedio del % ponderado por nota de todos los alumnos
-//   - Modo Docente: nueva columna "% APR" por alumno en la tabla
-//   - Modo Alumno: % APROBACIÓN = Σ(nota_i/10) / n_temas * 100 (ponderado por temas)
-//   - Modo Alumno: % mostrado en el header del alumno
-// v2.1 · 2026-04-19
-//   - calcNota: toma MAXIMO de nota entre todos los niveles con dato
-//   - Cap 100% al leer pct desde GAS (evita valores > 100)
-// v2.0 · 2026-04-19
-//   - APR. COMPLETOS y % APROBACION corregidos por modo
-//   - Nueva columna % APR por alumno en tabla docente
 // v1.0 · 2026-03-23
-//   - Visualización inicial de notas por alumno desde Google Sheets
+// Descripción: Visualización de notas por alumno desde Google Sheets
+// Modos: Docente (login) | Alumno (búsqueda por apellido)
+// Lógica: promedio 3 niveles (N1/N2/N3). Aprobado si cada nivel ≥ 60%
+//         y promedio ≥ 60%. Nota = promedio / 10.
 // ═══════════════════════════════════════════════════════════════
 
 // ── CONFIG ─────────────────────────────────────────────────────
+// const GAS_URL   = 'https://script.google.com/macros/s/AKfycbxHuPBB9MW0pMXNh-i8m48T3DFULKKAMxdu6lzkYRPO20JSPp4OCInpMrKDWrzDhHnN/exec';
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbwYgpou84B4VRTPHhPJfpC-wCP9mczB8iuIXXVJJgWR5PWRCD9xrYHuXBaHjwA6b0Ba/exec';
 
-const CREDS     = { user: 'profe', pass: 'filosofia2026' };
-const UMBRAL    = 60;   // % mínimo para aprobar
+
+const CREDS     = { user: 'profe', pass: 'filosofia2026' };  // ← CAMBIAR
+const UMBRAL    = 60;   // % mínimo por nivel y promedio
 const NIVELES   = ['1', '2', '3'];
 const N_LABEL   = { '1':'Nivel 1 : Aprendiz', '2':'Nivel 2 — Filósofo', '3':'Nivel 3 — Sabio' };
 
@@ -372,7 +345,7 @@ const N_LABEL   = { '1':'Nivel 1 : Aprendiz', '2':'Nivel 2 — Filósofo', '3':'
 let modoDocente = false;
 let apellidoBusq = '';
 let datosRaw   = [];
-let temasUnicos = [];
+let temasUnicos = [];  // ["1_1","1_2",...] ordenados
 
 // ── NAVEGACIÓN ─────────────────────────────────────────────────
 function irA(id){
@@ -452,7 +425,7 @@ function cargarDatos(){
 function procesarDatos(){
   const alumnos  = {};
   const temasSet = new Set();
-  const keysNorm = {};
+  const keysNorm = {};          // nombre-normalizado → key
   const UMBRAL_SIM = 0.80;
 
   function buscarSimilar(apellido, nombre){
@@ -470,7 +443,7 @@ function procesarDatos(){
     const apellido = trim(row['Apellido'] || row['apellido'] || '');
     const curso    = trim(row['Curso']    || row['curso']    || '');
     const nivel    = trim(row['Nivel']    || row['nivel']    || '').toUpperCase();
-    const pct      = Math.min(parseFloat(row['% Correctas'] || row['precision'] || row['Precision'] || 0), 100);
+    const pct      = parseFloat(row['% Correctas'] || row['precision'] || row['Precision'] || 0);
     const unidad   = parseInt(row['Unidad'] || row['unidad'] || 0);
     const tema     = parseInt(row['Tema']   || row['tema']   || 0);
 
@@ -479,6 +452,7 @@ function procesarDatos(){
     const tKey = `${unidad}_${tema}`;
     temasSet.add(tKey);
 
+    // buscar alumno ya existente con nombre similar (fuzzy)
     let key = buscarSimilar(apellido, nombre);
     if(!key){
       key = `${apellido}__${nombre}__${curso}`;
@@ -487,6 +461,8 @@ function procesarDatos(){
     }
 
     if(!alumnos[key].temas[tKey]) alumnos[key].temas[tKey] = { unidad, tema, niveles:{} };
+
+    // Último intento gana (sheet está en orden cronológico)
     alumnos[key].temas[tKey].niveles[nivel] = { pct };
   });
 
@@ -518,56 +494,24 @@ function similitudNombre(a, b){
 }
 
 // ── NOTA POR TEMA ───────────────────────────────────────────────
-// Nota = MAXIMA nota obtenida entre todos los niveles con dato.
-// Escala por nivel: N3 -> max 10 | N2 -> max 9 | N1 -> max 8
-// Ejemplo: N1=100% (->8), N2=40% (->3.6), N3=sin dato -> nota=8
+// Nota = % obtenido en el nivel más alto completado, escalado a su máximo:
+//   N3 → máx 10  |  N2 → máx 9  |  N1 → máx 8
 function calcNota(temaDat){
   const maxPorNivel = { '3': 10, '2': 9, '1': 8 };
-  let mejorNota = -1;
-  let mejorNivel = null;
-
-  NIVELES.forEach(nv => {
+  for(const nv of ['3', '2', '1']){
     const d = temaDat.niveles[nv];
-    if(!d) return;
-    const nota = +(d.pct * maxPorNivel[nv] / 100).toFixed(1);
-    if(nota > mejorNota){ mejorNota = nota; mejorNivel = nv; }
-  });
-
-  if(mejorNivel === null) return { completo: false };
-
-  const dMejor = temaDat.niveles[mejorNivel];
-  return {
-    completo : true,
-    nota     : mejorNota,
-    aprobado : dMejor.pct >= UMBRAL,
-    nivelMax : mejorNivel,
-    pcts     : NIVELES.map(n => temaDat.niveles[n]?.pct ?? null)
-  };
-}
-
-// ── % DE APROBACIÓN POR ALUMNO ──────────────────────────────────
-// Cada tema vale 1/n_temas del total.
-// La contribución de cada tema = (nota_tema / 10) * (1/n_temas) * 100
-// Si un tema no tiene datos → contribuye 0
-// Resultado: porcentaje de 0 a 100
-function calcPctAlumno(al){
-  const n = temasUnicos.length;
-  if(n === 0) return 0;
-  let suma = 0;
-  temasUnicos.forEach(tk => {
-    const t = al.temas[tk];
-    if(!t){ return; }  // sin datos → 0
-    const r = calcNota(t);
-    suma += r.completo ? r.nota / 10 : 0;
-  });
-  return Math.round(suma / n * 100);
-}
-
-// Color según % aprobación
-function colorPct(pct){
-  if(pct >= 70) return 'var(--green)';
-  if(pct >= 50) return 'var(--gold)';
-  return 'var(--red)';
+    if(d){
+      const nota = +(d.pct * maxPorNivel[nv] / 100).toFixed(1);
+      return {
+        completo : true,
+        nota,
+        aprobado : d.pct >= UMBRAL,
+        nivelMax : nv,
+        pcts     : NIVELES.map(n => temaDat.niveles[n]?.pct ?? null)
+      };
+    }
+  }
+  return { completo: false };
 }
 
 // ── RENDER MAESTRO ──────────────────────────────────────────────
@@ -609,76 +553,38 @@ function renderTabla(alumnosParam){
 }
 
 // ── MINI STATS ──────────────────────────────────────────────────
-function renderMiniStats(lista, stats){
-  if(modoDocente){
-    // APR. COMPLETOS = alumnos que tienen TODOS sus temas aprobados
-    let alumnosTodosApr = 0;
-    let sumaPct = 0;
-
-    lista.forEach(al => {
-      const pct = calcPctAlumno(al);
-      sumaPct += pct;
-
-      let todosApr = true, tieneAlguno = false;
-      temasUnicos.forEach(tk => {
-        const t = al.temas[tk];
-        if(!t){ todosApr = false; return; }
-        const r = calcNota(t);
-        if(r.completo){ tieneAlguno = true; if(!r.aprobado) todosApr = false; }
-        else { todosApr = false; }
-      });
-      if(tieneAlguno && todosApr) alumnosTodosApr++;
+function renderMiniStats(lista, cont){
+  let totApr=0, totComp=0, totTemas=0;
+  lista.forEach(al => {
+    temasUnicos.forEach(tk => {
+      const t = al.temas[tk]; if(!t) return;
+      totTemas++;
+      const r = calcNota(t);
+      if(r.completo){ totComp++; if(r.aprobado) totApr++; }
     });
-
-    const avgPct = lista.length > 0 ? Math.round(sumaPct / lista.length) : 0;
-
-    stats.innerHTML = `
-      <div class="ms"><div class="ms-val">${lista.length}</div><div class="ms-lbl">ALUMNOS</div></div>
-      <div class="ms"><div class="ms-val">${temasUnicos.length}</div><div class="ms-lbl">TEMAS</div></div>
-      <div class="ms"><div class="ms-val" style="color:var(--green)">${alumnosTodosApr}</div>
-        <div class="ms-lbl">APR. COMPLETOS<br><span style="font-size:.4rem;color:var(--dim)">(todos sus temas)</span></div></div>
-      <div class="ms"><div class="ms-val" style="color:${colorPct(avgPct)}">${avgPct}%</div>
-        <div class="ms-lbl">% APR. PROMEDIO<br><span style="font-size:.4rem;color:var(--dim)">(nota/10 × temas)</span></div></div>
-    `;
-
-  } else {
-    // modo alumno: APR. COMPLETOS = temas del alumno aprobados (igual que antes)
-    let totApr = 0, totComp = 0;
-    lista.forEach(al => {
-      temasUnicos.forEach(tk => {
-        const t = al.temas[tk]; if(!t) return;
-        const r = calcNota(t);
-        if(r.completo){ totComp++; if(r.aprobado) totApr++; }
-      });
-    });
-
-    // % ponderado por nota/tema
-    const pct = lista.length > 0 ? calcPctAlumno(lista[0]) : 0;
-
-    stats.innerHTML = `
-      <div class="ms"><div class="ms-val">${temasUnicos.length}</div><div class="ms-lbl">TEMAS TOTAL</div></div>
-      <div class="ms"><div class="ms-val" style="color:var(--green)">${totApr}</div>
-        <div class="ms-lbl">APR. COMPLETOS</div></div>
-      <div class="ms"><div class="ms-val" style="color:${colorPct(pct)}">${pct}%</div>
-        <div class="ms-lbl">% APROBACIÓN<br><span style="font-size:.4rem;color:var(--dim)">(nota/10 × temas)</span></div></div>
-    `;
-  }
+  });
+  const pctA = totComp>0 ? Math.round(totApr/totComp*100) : 0;
+  cont.innerHTML = `
+    <div class="ms"><div class="ms-val">${lista.length}</div><div class="ms-lbl">ALUMNOS</div></div>
+    <div class="ms"><div class="ms-val">${temasUnicos.length}</div><div class="ms-lbl">TEMAS</div></div>
+    <div class="ms"><div class="ms-val" style="color:var(--green)">${totApr}</div><div class="ms-lbl">APR. COMPLETOS</div></div>
+    <div class="ms"><div class="ms-val" style="color:var(--gold)">${pctA}%</div><div class="ms-lbl">% APROBACIÓN</div></div>
+  `;
 }
 
 // ── TABLA DOCENTE ───────────────────────────────────────────────
 function renderTablaDocente(lista, cont){
   let h = '<div class="tabla-wrap"><table><thead>';
 
-  // Fila 1: grupos de tema + encabezado columna % APR
+  // Fila 1: grupos de tema
   h += '<tr><th class="th-al" rowspan="2">ALUMNO</th>';
   temasUnicos.forEach(tk => {
     const [u,t] = tk.split('_');
     h += `<th class="th-grupo" colspan="4">UNIDAD ${u} · TEMA ${t}</th>`;
   });
-  h += '<th class="th-pct" rowspan="2">% APR</th>';
   h += '</tr>';
 
-  // Fila 2: N1 N2 N3 NOTA por cada tema
+  // Fila 2: N1 N2 N3 NOTA
   h += '<tr>';
   temasUnicos.forEach(() => {
     h += '<th>N1</th><th>N2</th><th>N3</th>';
@@ -687,9 +593,6 @@ function renderTablaDocente(lista, cont){
   h += '</tr></thead><tbody>';
 
   lista.forEach(al => {
-    const pctAl = calcPctAlumno(al);
-    const pctColor = colorPct(pctAl);
-
     h += `<tr><td class="td-al">
       <b style="color:var(--white)">${al.apellido}</b>
       <span style="color:var(--dim)">, ${al.nombre}</span>
@@ -716,9 +619,6 @@ function renderTablaDocente(lista, cont){
         h += `<td class="cel-nota ${cls}">${r.nota}</td>`;
       }
     });
-
-    // Columna % APR por alumno
-    h += `<td class="td-pct-al" style="color:${pctColor}">${pctAl}%</td>`;
     h += '</tr>';
   });
 
@@ -738,8 +638,6 @@ function renderVistaAlumno(lista, cont){
       if(r.completo){ comp++; if(r.aprobado) apr++; }
     });
 
-    const pctAl = calcPctAlumno(al);
-    const pctColor = colorPct(pctAl);
     const ratio = comp>0 ? `${apr}/${comp} temas aprobados` : 'Sin temas completos';
     const rCls  = apr===comp && comp>0 ? 'bdg-g' : apr>0 ? 'bdg-d' : 'bdg-r';
 
@@ -749,10 +647,6 @@ function renderVistaAlumno(lista, cont){
         <div class="al-curso">CURSO: ${al.curso}</div>
       </div>
       <span class="al-badge ${rCls}">${ratio}</span>
-      <div class="al-pct-box">
-        <div class="al-pct-val" style="color:${pctColor}">${pctAl}%</div>
-        <div class="al-pct-lbl">% APROBACIÓN</div>
-      </div>
     </div>
     <div class="temas-grid" style="margin-bottom:1.2rem">`;
 
@@ -806,6 +700,39 @@ function renderVistaAlumno(lista, cont){
   });
 
   cont.innerHTML = h;
+}
+
+// ── doGet: lectura de datos para Libro de Calificaciones ──
+function doGet(e) {
+  try {
+    const action = e && e.parameter && e.parameter.action;
+    if (action === 'getData') return getSheetData();
+    return jsonOut({ ok: false, error: 'Acción no reconocida' });
+  } catch (err) {
+    return jsonOut({ ok: false, error: err.toString() });
+  }
+}
+
+function getSheetData() {
+  const ss    = SpreadsheetApp.openById('1uyKfc_L_nJqo3HiB9FW2FaBMMJavHMFlxDuU0qdS2Lk');
+  const sheet = ss.getSheetByName('Resultados Quiz') || ss.getSheets()[0];
+  const data  = sheet.getDataRange().getValues();
+  if (data.length < 2) return jsonOut({ ok: true, data: [] });
+  const headers = data[0].map(h => String(h).trim());
+  const rows = data.slice(1)
+    .filter(r => r.some(c => c !== ''))
+    .map(row => {
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = row[i]);
+      return obj;
+    });
+  return jsonOut({ ok: true, data: rows });
+}
+
+function jsonOut(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 </script>
 </body>
